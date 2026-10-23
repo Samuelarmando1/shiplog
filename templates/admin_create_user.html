@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}ShipLog - Admin - Crear Usuario{% endblock %}
+
+{% block content %}
+    <div class="card mx-auto" style="max-width: 500px;">
+        <div class="card-header">
+            <h4 class="mb-0">
+                <i class="fas fa-user-shield"></i> Crear Usuario (Admin)
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="username" class="form-label">
+                        <i class="fas fa-user"></i> Nombre de Usuario
+                    </label>
+                    <input type="text" class="form-control" id="username" name="username" required
+                           placeholder="Nombre de usuario para el nuevo usuario">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="password" class="form-label">
+                        <i class="fas fa-lock"></i> Contraseña
+                    </label>
+                    <input type="password" class="form-control" id="password" name="password" required
+                           placeholder="Contraseña para el nuevo usuario">
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="is_admin" name="is_admin">
+                    <label class="form-check-label" for="is_admin">
+                        <i class="fas fa-crown"></i> Es Administrador
+                    </label>
+                    <div class="form-text">
+                        Marca esta casilla si el usuario debe tener permisos de administrador.
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-user-plus"></i> Crear Usuario
+                </button>
+            </form>
+            
+            <div class="text-center mt-3">
+                <a href="{{ url_for('index') }}" class="text-decoration-none">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

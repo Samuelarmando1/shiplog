@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}ShipLog - {{ log.title }}{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="fas fa-ship"></i> {{ log.title }}
+            </h4>
+            <small class="text-white">
+                <i class="fas fa-calendar"></i> {{ log.date.strftime('%d/%m/%Y %H:%M') }}
+            </small>
+        </div>
+        <div class="card-body">
+            <div class="log-content mb-4">
+                {{ log.content }}
+            </div>
+            
+            {% if log.files %}
+            <div class="mb-4">
+                <h5><i class="fas fa-paperclip"></i> Archivos adjuntos ({{ log.files|length }})</h5>
+                <div class="row">
+                    {% for file in log.files %}
+                    <div class="col-md-6 mb-2">
+                        <div class="file-item d-flex align-items-center">
+                            <i class="fas fa-file file-icon me-2"></i>
+                            <a href="/static/uploads/{{ file.filename }}" 
+                               class="text-decoration-none flex-grow-1" 
+                               download="{{ file.original_name }}">
+                                {{ file.original_name }}
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+                <form action="{{ url_for('delete_log', log_id=log.id) }}" method="POST" 
+                      onsubmit="return confirm('¿Estás seguro de eliminar este log?');">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}ShipLog - Mis Logs{% endblock %}
+
+{% block content %}
+    {% if logs %}
+        {% for log in logs %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-ship"></i> {{ log.title }}
+                </h5>
+                <small class="text-white">
+                    <i class="fas fa-calendar"></i> {{ log.date.strftime('%d/%m/%Y %H:%M') }}
+                </small>
+            </div>
+            <div class="card-body">
+                <p class="log-content">{{ log.content }}</p>
+                
+                {% if log.files %}
+                <div class="mt-3">
+                    <h6><i class="fas fa-paperclip"></i> Archivos adjuntos:</h6>
+                    {% for file in log.files %}
+                    <div class="file-item d-flex align-items-center">
+                        <i class="fas fa-file file-icon me-2"></i>
+                        <a href="/static/uploads/{{ file.filename }}" 
+                           class="text-decoration-none" 
+                           download="{{ file.original_name }}">
+                            {{ file.original_name }}
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="mt-3 d-flex gap-2">
+                    <a href="{{ url_for('view_log', log_id=log.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-eye"></i> Ver Detalles
+                    </a>
+                    <form action="{{ url_for('delete_log', log_id=log.id) }}" method="POST" 
+                          onsubmit="return confirm('¿Estás seguro de eliminar este log?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-compass"></i>
+            <h2>No hay logs aún</h2>
+            <p class="lead">Comienza tu viaje registrando tu primer log</p>
+            <a href="{{ url_for('create') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus"></i> Crear Primer Log
+            </a>
+        </div>
+    {% endif %}
+{% endblock %}
