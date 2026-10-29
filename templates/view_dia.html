@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}ShipLog - {{ dia.fecha.strftime('%d/%m/%Y') }}{% endblock %}
+
+{% block content %}
+    <div class="mb-4">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-light">
+            <i class="fas fa-arrow-left"></i> Volver a Días
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0">
+                <i class="fas fa-calendar-day"></i> {{ dia.fecha.strftime('%d/%m/%Y') }}
+            </h4>
+        </div>
+        <div class="card-body">
+            <p class="mb-2">
+                <strong>Actividades:</strong> {{ dia.actividades|length }}
+            </p>
+            {% if dia.actividades %}
+                <p class="mb-2">
+                    <strong>Tiempo total:</strong>
+                    {% set total_tiempo = dia.actividades|sum(attribute='tiempo') %}
+                    {{ total_tiempo }} minutos
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if dia.actividades %}
+        {% for actividad in dia.actividades %}
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-ship"></i> {{ actividad.title }}
+                </h5>
+                <small class="text-white">
+                    <i class="fas fa-clock"></i> {{ actividad.date.strftime('%H:%M') }}
+                </small>
+            </div>
+            <div class="card-body">
+                <p class="log-content">{{ actividad.content }}</p>
+
+                <div class="mt-2">
+                    <span class="badge bg-info">
+                        <i class="fas fa-clock"></i> Tiempo: {{ actividad.tiempo }} minutos
+                    </span>
+                </div>
+
+                {% if actividad.files %}
+                <div class="mt-3">
+                    <h6><i class="fas fa-paperclip"></i> Archivos adjuntos:</h6>
+                    {% for file in actividad.files %}
+                    <div class="file-item d-flex align-items-center">
+                        <i class="fas fa-file file-icon me-2"></i>
+                        <a href="/static/uploads/{{ file.filename }}"
+                           class="text-decoration-none"
+                           download="{{ file.original_name }}">
+                            {{ file.original_name }}
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="mt-3 d-flex gap-2">
+                    <a href="{{ url_for('view_actividad', actividad_id=actividad.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-eye"></i> Ver Detalles
+                    </a>
+                    <form action="{{ url_for('delete_actividad', actividad_id=actividad.id) }}" method="POST"
+                          onsubmit="return confirm('¿Estás seguro de eliminar esta actividad?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-clipboard-list"></i>
+            <h2>No hay actividades en este día</h2>
+            <p class="lead">Agrega tu primera actividad para este día</p>
+            <a href="{{ url_for('create') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-plus"></i> Crear Actividad
+            </a>
+        </div>
+    {% endif %}
+{% endblock %}

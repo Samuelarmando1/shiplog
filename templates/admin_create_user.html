@@ -12,13 +12,21 @@
         <div class="card-body">
             <form method="POST">
                 <div class="mb-3">
+                    <label for="name_employee" class="form-label">
+                        <i class="fas fa-id-card"></i> Nombre Completo
+                    </label>
+                    <input type="text" class="form-control" id="name_employee" name="name_employee" required
+                           placeholder="Nombre completo del empleado">
+                </div>
+
+                <div class="mb-3">
                     <label for="username" class="form-label">
                         <i class="fas fa-user"></i> Nombre de Usuario
                     </label>
                     <input type="text" class="form-control" id="username" name="username" required
                            placeholder="Nombre de usuario para el nuevo usuario">
                 </div>
-                
+
                 <div class="mb-3">
                     <label for="password" class="form-label">
                         <i class="fas fa-lock"></i> Contraseña
@@ -26,7 +34,7 @@
                     <input type="password" class="form-control" id="password" name="password" required
                            placeholder="Contraseña para el nuevo usuario">
                 </div>
-                
+
                 <div class="mb-3 form-check">
                     <input type="checkbox" class="form-check-input" id="is_admin" name="is_admin">
                     <label class="form-check-label" for="is_admin">
@@ -36,7 +44,7 @@
                         Marca esta casilla si el usuario debe tener permisos de administrador.
                     </div>
                 </div>
-                
+
                 <button type="submit" class="btn btn-primary w-100">
                     <i class="fas fa-user-plus"></i> Crear Usuario
                 </button>

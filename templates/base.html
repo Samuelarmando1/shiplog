@@ -104,7 +104,7 @@
                         <i class="fas fa-home"></i> Inicio
                     </a>
                     <a class="nav-link" href="{{ url_for('create') }}">
-                        <i class="fas fa-plus"></i> Nuevo Log
+                        <i class="fas fa-plus"></i> Nueva Actividad
                     </a>
                     {% if current_user.is_admin %}
                     <a class="nav-link" href="{{ url_for('admin_create_user') }}">
@@ -115,7 +115,7 @@
                         <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
                     </a>
                     <span class="nav-link text-muted">
-                        <i class="fas fa-user"></i> {{ current_user.username }}
+                        <i class="fas fa-user"></i> {{ current_user.name_employee }}
                         {% if current_user.is_admin %}
                         <i class="fas fa-crown text-warning" title="Administrador"></i>
                         {% endif %}

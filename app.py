@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from datetime import datetime
+from datetime import datetime, date
 import os
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -30,7 +30,10 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
-    logs = db.relationship('Log', backref='author', lazy=True)
+    name_employee = db.Column(db.String(100), nullable=False)
+    fech_alta = db.Column(db.DateTime, default=datetime.utcnow)
+    actividades = db.relationship('Actividad', backref='author', lazy=True)
+    dias = db.relationship('Dia', backref='user', lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -42,19 +45,30 @@ class User(UserMixin, db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-class Log(db.Model):
+class Actividad(db.Model):
+    __tablename__ = 'ctl_actividades'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
+    tiempo = db.Column(db.Integer, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('tmp_empleados.id'), nullable=False)
-    files = db.relationship('File', backref='log', lazy=True, cascade='all, delete-orphan')
+    dia_id = db.Column(db.Integer, db.ForeignKey('ctl_dias.id'), nullable=False)
+    files = db.relationship('File', backref='actividad', lazy=True, cascade='all, delete-orphan')
+
+class Dia(db.Model):
+    __tablename__ = 'ctl_dias'
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('tmp_empleados.id'), nullable=False)
+    actividades = db.relationship('Actividad', backref='dia', lazy=True)
+    __table_args__ = (db.UniqueConstraint('fecha', 'user_id', name='uq_fecha_user'),)
 
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     original_name = db.Column(db.String(255), nullable=False)
-    log_id = db.Column(db.Integer, db.ForeignKey('log.id'), nullable=False)
+    actividad_id = db.Column(db.Integer, db.ForeignKey('ctl_actividades.id'), nullable=False)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -62,9 +76,24 @@ def allowed_file(filename):
 @app.route('/')
 def index():
     if current_user.is_authenticated:
-        logs = Log.query.filter_by(user_id=current_user.id).order_by(Log.date.desc()).all()
-        return render_template('index.html', logs=logs)
+        from datetime import timedelta
+        today = date.today()
+        last_week = today - timedelta(days=6)
+
+        dias = Dia.query.filter(
+            Dia.user_id == current_user.id,
+            Dia.fecha >= last_week,
+            Dia.fecha <= today
+        ).order_by(Dia.fecha.desc()).all()
+
+        return render_template('index.html', dias=dias, today=today)
     return redirect(url_for('login'))
+
+@app.route('/todos-dias')
+@login_required
+def todos_dias():
+    dias = Dia.query.filter_by(user_id=current_user.id).order_by(Dia.fecha.desc()).all()
+    return render_template('todos_dias.html', dias=dias)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -87,19 +116,20 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        
+        name_employee = request.form['name_employee']
+
         if User.query.filter_by(username=username).first():
             flash('El usuario ya existe', 'danger')
             return redirect(url_for('register'))
-        
-        user = User(username=username)
+
+        user = User(username=username, name_employee=name_employee)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
-        
+
         flash('¡Registro exitoso! Ahora puedes iniciar sesión', 'success')
         return redirect(url_for('login'))
-    
+
     return render_template('register.html')
 
 @app.route('/admin/create-user', methods=['GET', 'POST'])
@@ -108,24 +138,25 @@ def admin_create_user():
     if not current_user.is_admin:
         flash('No tienes permiso para acceder a esta página', 'danger')
         return redirect(url_for('index'))
-    
+
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        name_employee = request.form['name_employee']
         is_admin = request.form.get('is_admin') == 'on'
-        
+
         if User.query.filter_by(username=username).first():
             flash('El usuario ya existe', 'danger')
             return redirect(url_for('admin_create_user'))
-        
-        user = User(username=username, is_admin=is_admin)
+
+        user = User(username=username, name_employee=name_employee, is_admin=is_admin)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
-        
+
         flash(f'Usuario {username} creado exitosamente!', 'success')
         return redirect(url_for('index'))
-    
+
     return render_template('admin_create_user.html')
 
 @app.route('/logout')
@@ -179,57 +210,74 @@ def create():
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
-        
-        log = Log(title=title, content=content, user_id=current_user.id)
-        db.session.add(log)
+        tiempo = request.form['tiempo']
+        fecha_actividad = request.form.get('fecha') or date.today()
+
+        fecha_actividad = datetime.strptime(fecha_actividad, '%Y-%m-%d').date() if isinstance(fecha_actividad, str) else fecha_actividad
+
+        dia = Dia.query.filter_by(fecha=fecha_actividad, user_id=current_user.id).first()
+        if not dia:
+            dia = Dia(fecha=fecha_actividad, user_id=current_user.id)
+            db.session.add(dia)
+            db.session.commit()
+
+        actividad = Actividad(title=title, content=content, tiempo=tiempo, user_id=current_user.id, dia_id=dia.id)
+        db.session.add(actividad)
         db.session.commit()
-        
-        # Manejar archivos subidos
+
         files = request.files.getlist('files')
         for file in files:
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
-                # Agregar timestamp para evitar nombres duplicados
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename = f"{timestamp}_{filename}"
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                
-                file_record = File(filename=filename, original_name=file.filename, log_id=log.id)
+
+                file_record = File(filename=filename, original_name=file.filename, actividad_id=actividad.id)
                 db.session.add(file_record)
-        
+
         db.session.commit()
-        flash('Log creado exitosamente!', 'success')
+        flash('Actividad creada exitosamente!', 'success')
         return redirect(url_for('index'))
-    
-    return render_template('create.html')
 
-@app.route('/log/<int:log_id>')
+    return render_template('create.html', today=date.today())
+
+@app.route('/dia/<int:dia_id>')
 @login_required
-def view_log(log_id):
-    log = Log.query.get_or_404(log_id)
-    if log.user_id != current_user.id:
-        flash('No tienes permiso para ver este log', 'danger')
+def view_dia(dia_id):
+    dia = Dia.query.get_or_404(dia_id)
+    if dia.user_id != current_user.id:
+        flash('No tienes permiso para ver este día', 'danger')
         return redirect(url_for('index'))
-    return render_template('view.html', log=log)
+    return render_template('view_dia.html', dia=dia)
 
-@app.route('/log/<int:log_id>/delete', methods=['POST'])
+@app.route('/actividad/<int:actividad_id>')
 @login_required
-def delete_log(log_id):
-    log = Log.query.get_or_404(log_id)
+def view_actividad(actividad_id):
+    actividad = Actividad.query.get_or_404(actividad_id)
+    if actividad.user_id != current_user.id:
+        flash('No tienes permiso para ver esta actividad', 'danger')
+        return redirect(url_for('index'))
+    return render_template('view.html', actividad=actividad)
+
+@app.route('/actividad/<int:actividad_id>/delete', methods=['POST'])
+@login_required
+def delete_actividad(actividad_id):
+    actividad = Actividad.query.get_or_404(actividad_id)
     
-    if log.user_id != current_user.id:
-        flash('No tienes permiso para eliminar este log', 'danger')
+    if actividad.user_id != current_user.id:
+        flash('No tienes permiso para eliminar esta actividad', 'danger')
         return redirect(url_for('index'))
     
     # Eliminar archivos físicos
-    for file in log.files:
+    for file in actividad.files:
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         if os.path.exists(file_path):
             os.remove(file_path)
     
-    db.session.delete(log)
+    db.session.delete(actividad)
     db.session.commit()
-    flash('Log eliminado exitosamente!', 'success')
+    flash('Actividad eliminada exitosamente!', 'success')
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
