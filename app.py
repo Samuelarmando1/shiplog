@@ -260,6 +260,38 @@ def view_actividad(actividad_id):
         return redirect(url_for('index'))
     return render_template('view.html', actividad=actividad)
 
+@app.route('/actividad/<int:actividad_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_actividad(actividad_id):
+    actividad = Actividad.query.get_or_404(actividad_id)
+    if actividad.user_id != current_user.id:
+        flash('No tienes permiso para editar esta actividad', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        actividad.title = request.form['title']
+        actividad.content = request.form['content']
+        actividad.tiempo = request.form['tiempo']
+        fecha_actividad = request.form.get('fecha') or date.today()
+
+        fecha_actividad = datetime.strptime(fecha_actividad, '%Y-%m-%d').date() if isinstance(fecha_actividad, str) else fecha_actividad
+
+        if actividad.dia.fecha != fecha_actividad:
+            dia_nuevo = Dia.query.filter_by(fecha=fecha_actividad, user_id=current_user.id).first()
+            if not dia_nuevo:
+                dia_nuevo = Dia(fecha=fecha_actividad, user_id=current_user.id)
+                db.session.add(dia_nuevo)
+                db.session.commit()
+
+            actividad.dia_id = dia_nuevo.id
+            actividad.date = datetime.combine(fecha_actividad, datetime.now().time())
+
+        db.session.commit()
+        flash('Actividad actualizada exitosamente!', 'success')
+        return redirect(url_for('view_dia', dia_id=actividad.dia_id))
+
+    return render_template('edit.html', actividad=actividad)
+
 @app.route('/actividad/<int:actividad_id>/delete', methods=['POST'])
 @login_required
 def delete_actividad(actividad_id):
