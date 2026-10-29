@@ -41,13 +41,18 @@
 
                 <div class="mb-3">
                     <label for="tiempo" class="form-label">
-                        <i class="fas fa-clock"></i> Tiempo (en minutos)
+                        <i class="fas fa-clock"></i> Tiempo
                     </label>
-                    <input type="number" class="form-control" id="tiempo" name="tiempo" required min="1"
+                    <input type="text" class="form-control" id="tiempo" name="tiempo" required
                            value="{{ actividad.tiempo }}"
-                           placeholder="Ej: 30">
+                           placeholder="Ej: 90, 1.5h, 1h 30m, 2d 3h 15m"
+                           oninput="convertirTiempo()">
                     <div class="form-text">
-                        Ingresa el tiempo que dedicaste a esta actividad en minutos.
+                        Ingresa el tiempo en minutos, horas (ej: 1.5h), o formato mixto (ej: 1h 30m, 2d 3h 15m).
+                    </div>
+                    <div id="tiempo-convertido" class="mt-2 text-primary fw-bold"></div>
+                    <div id="tiempo-minutos" class="d-none">
+                        <input type="hidden" id="tiempo-minutos-hidden" name="tiempo-minutos" value="{{ actividad.tiempo }}">
                     </div>
                 </div>
 
@@ -62,4 +67,105 @@
             </form>
         </div>
     </div>
+
+    <script>
+        function parsearTiempo(texto) {
+            // Si es solo un número, asumir minutos
+            if (/^\d+$/.test(texto.trim())) {
+                return parseInt(texto);
+            }
+
+            let totalMinutos = 0;
+
+            // Buscar días (d)
+            const diasMatch = texto.match(/(\d+)\s*d/i);
+            if (diasMatch) {
+                totalMinutos += parseInt(diasMatch[1]) * 540; // 1 día = 9 horas = 540 minutos
+            }
+
+            // Buscar horas (h) o formato decimal (1.5h)
+            const horasMatch = texto.match(/(\d+(?:\.\d+)?)\s*h/i);
+            if (horasMatch) {
+                totalMinutos += Math.round(parseFloat(horasMatch[1]) * 60);
+            }
+
+            // Buscar minutos (m)
+            const minutosMatch = texto.match(/(\d+)\s*m/i);
+            if (minutosMatch) {
+                totalMinutos += parseInt(minutosMatch[1]);
+            }
+
+            // Si no hay formato especial, intentar parsear como número decimal de horas
+            if (!diasMatch && !horasMatch && !minutosMatch) {
+                const num = parseFloat(texto);
+                if (!isNaN(num)) {
+                    totalMinutos = Math.round(num * 60);
+                }
+            }
+
+            return totalMinutos;
+        }
+
+        function convertirTiempo() {
+            const input = document.getElementById('tiempo').value;
+            const resultadoDiv = document.getElementById('tiempo-convertido');
+            const minutosHidden = document.getElementById('tiempo-minutos-hidden');
+
+            if (!input || input.trim() === '') {
+                resultadoDiv.textContent = '';
+                minutosHidden.value = '';
+                return;
+            }
+
+            const minutos = parsearTiempo(input);
+            minutosHidden.value = minutos;
+
+            if (minutos <= 0) {
+                resultadoDiv.textContent = '';
+                return;
+            }
+
+            let resultado = '';
+
+            if (minutos >= 540) { // 9 horas = 540 minutos = 1 día
+                const dias = Math.floor(minutos / 540);
+                const minutosRestantes = minutos % 540;
+                const horas = Math.floor(minutosRestantes / 60);
+                const mins = minutosRestantes % 60;
+
+                resultado = `${dias} día${dias > 1 ? 's' : ''}`;
+                if (horas > 0) {
+                    resultado += `, ${horas} hora${horas > 1 ? 's' : ''}`;
+                }
+                if (mins > 0) {
+                    resultado += `, ${mins} minuto${mins > 1 ? 's' : ''}`;
+                }
+            } else if (minutos >= 60) {
+                const horas = Math.floor(minutos / 60);
+                const mins = minutos % 60;
+
+                resultado = `${horas} hora${horas > 1 ? 's' : ''}`;
+                if (mins > 0) {
+                    resultado += `, ${mins} minuto${mins > 1 ? 's' : ''}`;
+                }
+            } else {
+                resultado = `${minutos} minuto${minutos > 1 ? 's' : ''}`;
+            }
+
+            resultadoDiv.textContent = `= ${resultado} (${minutos} min)`;
+        }
+
+        // Interceptar el envío del formulario para usar el valor en minutos
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const minutosHidden = document.getElementById('tiempo-minutos-hidden');
+            const tiempoInput = document.getElementById('tiempo');
+
+            if (minutosHidden.value) {
+                tiempoInput.value = minutosHidden.value;
+            }
+        });
+
+        // Ejecutar la conversión al cargar la página
+        document.addEventListener('DOMContentLoaded', convertirTiempo);
+    </script>
 {% endblock %}

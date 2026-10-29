@@ -66,6 +66,9 @@ class Actividad(db.Model):
     content = db.Column(db.Text, nullable=False)
     date = db.Column(db.DateTime, default=datetime.utcnow)
     tiempo = db.Column(db.Integer, nullable=False)
+    dias = db.Column(db.Integer, default=0)
+    horas = db.Column(db.Integer, default=0)
+    minutos = db.Column(db.Integer, default=0)
     user_id = db.Column(db.Integer, db.ForeignKey('tmp_empleados.id'), nullable=False)
     dia_id = db.Column(db.Integer, db.ForeignKey('ctl_dias.id'), nullable=False)
     files = db.relationship('File', backref='actividad', lazy=True, cascade='all, delete-orphan')
@@ -224,7 +227,7 @@ def create():
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
-        tiempo = request.form['tiempo']
+        tiempo = int(request.form['tiempo'])
         fecha_actividad = request.form.get('fecha') or date.today()
 
         fecha_actividad = datetime.strptime(fecha_actividad, '%Y-%m-%d').date() if isinstance(fecha_actividad, str) else fecha_actividad
@@ -235,7 +238,13 @@ def create():
             db.session.add(dia)
             db.session.commit()
 
-        actividad = Actividad(title=title, content=content, tiempo=tiempo, user_id=current_user.id, dia_id=dia.id)
+        # Calcular días, horas y minutos
+        dias = tiempo // 540  # 540 minutos = 9 horas = 1 día
+        minutos_restantes = tiempo % 540
+        horas = minutos_restantes // 60
+        minutos = minutos_restantes % 60
+
+        actividad = Actividad(title=title, content=content, tiempo=tiempo, dias=dias, horas=horas, minutos=minutos, user_id=current_user.id, dia_id=dia.id)
         db.session.add(actividad)
         db.session.commit()
 
@@ -285,10 +294,21 @@ def edit_actividad(actividad_id):
     if request.method == 'POST':
         actividad.title = request.form['title']
         actividad.content = request.form['content']
-        actividad.tiempo = request.form['tiempo']
+        tiempo = int(request.form['tiempo'])
+        actividad.tiempo = tiempo
         fecha_actividad = request.form.get('fecha') or date.today()
 
         fecha_actividad = datetime.strptime(fecha_actividad, '%Y-%m-%d').date() if isinstance(fecha_actividad, str) else fecha_actividad
+
+        # Calcular días, horas y minutos
+        dias = tiempo // 540  # 540 minutos = 9 horas = 1 día
+        minutos_restantes = tiempo % 540
+        horas = minutos_restantes // 60
+        minutos = minutos_restantes % 60
+
+        actividad.dias = dias
+        actividad.horas = horas
+        actividad.minutos = minutos
 
         if actividad.dia.fecha != fecha_actividad:
             dia_nuevo = Dia.query.filter_by(fecha=fecha_actividad, user_id=current_user.id).first()
