@@ -30,7 +30,7 @@
                             <p class="mb-2">
                                 <strong>Tiempo total:</strong>
                                 {% set total_tiempo = dia.actividades|sum(attribute='tiempo') %}
-                                {{ total_tiempo }} minutos
+                                {{ total_tiempo|minutes_to_hours }}
                             </p>
                         {% endif %}
                         <a href="{{ url_for('view_dia', dia_id=dia.id) }}" class="btn btn-primary btn-sm">
